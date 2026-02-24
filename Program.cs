@@ -46,12 +46,11 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowAngularClient",
         policy => policy
             .WithOrigins(
-                "http://localhost:4200",                    // Local Angular
-                "https://your-app-name.netlify.app"         // 👈 CHANGE THIS TO YOUR ACTUAL NETLIFY URL
-            )
+                "http://localhost:4200",                    
+                "https://mini-hospital-management.netlify.app" )
             .AllowAnyHeader()
             .AllowAnyMethod()
-            .AllowCredentials()); // Useful if you eventually use Cookies/SignalR
+            .AllowCredentials()); 
 });
 
 // 🔹 6. Swagger Generation
