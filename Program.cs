@@ -51,7 +51,7 @@ builder.Services.AddCors(options =>
             )
             .AllowAnyHeader()
             .AllowAnyMethod()
-            .AllowCredentials(); // Useful if you eventually use Cookies/SignalR
+            .AllowCredentials()); // Useful if you eventually use Cookies/SignalR
 });
 
 // 🔹 6. Swagger Generation
@@ -98,7 +98,7 @@ app.UseSwaggerUI(c =>
 
 app.UseRouting();
 
-// CORS must be AFTER UseRouting but BEFORE UseAuthentication
+// CORS must be AFTER UseRouting but BEFORE UseAuthgitentication
 app.UseCors("AllowAngularClient");
 
 app.UseAuthentication();
