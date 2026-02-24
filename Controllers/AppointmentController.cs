@@ -36,7 +36,7 @@ public IActionResult GetTodaysAppointments()
     [HttpGet("upcoming")]
     public async Task<IActionResult> GetUpcomingAppointments()
     {
-        var now = DateTime.Now;
+       var now = DateTime.UtcNow;
 var rawAppointments = await _context.Appointments
     // .Where(a => a.AppointmentDate >= now)
     .OrderBy(a => a.AppointmentDate)

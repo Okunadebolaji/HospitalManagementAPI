@@ -19,8 +19,10 @@ public class DashboardController : ControllerBase
     [HttpGet("dashboard-metrics")]
 public async Task<IActionResult> GetDashboardMetrics()
 {
-    var now = DateTime.Now;
+  var now = DateTime.UtcNow;
     var today = now.Date;
+    var tomorrow = today.AddDays(1);
+
     var startOfMonth = new DateTime(now.Year, now.Month, 1);
     var startOfLastMonth = startOfMonth.AddMonths(-1);
 
@@ -47,13 +49,15 @@ public async Task<IActionResult> GetDashboardMetrics()
         .Where(a => a.AppointmentDate >= startOfLastMonth && a.AppointmentDate < startOfMonth)
         .SumAsync(a => a.Fee)?? 0 ;
 
-    var appointmentsToday = await _context.Appointments
-        .Where(a => a.AppointmentDate.Date == today)
-        .CountAsync();
+   
 
-    var earningsToday = await _context.Appointments
-        .Where(a => a.AppointmentDate.Date == today)
-        .SumAsync(a => a.Fee)?? 0 ;
+var appointmentsToday = await _context.Appointments
+    .Where(a => a.AppointmentDate >= today && a.AppointmentDate < tomorrow)
+    .CountAsync();
+
+var earningsToday = await _context.Appointments
+    .Where(a => a.AppointmentDate >= today && a.AppointmentDate < tomorrow)
+    .SumAsync(a => a.Fee) ?? 0;
 
     var successRate = 90; // Placeholder
     var previousSuccessRate = 85; 
