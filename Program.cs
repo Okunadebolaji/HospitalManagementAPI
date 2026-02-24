@@ -8,7 +8,7 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 🔹 Add Controllers and JSON options
+// 🔹 1. Controllers & JSON Options
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
@@ -16,16 +16,14 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.WriteIndented = true;
     });
 
-// 🔹 Add EF Core
-
-
+// 🔹 2. Database Connection (PostgreSQL)
 builder.Services.AddDbContext<HospitalDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// 🔹 Add JWT Service
+// 🔹 3. Dependency Injection
 builder.Services.AddScoped<IJwtService, JwtService>();
 
-// 🔹 Add Authentication
+// 🔹 4. Authentication (JWT)
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -42,21 +40,25 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-// 🔹 Add CORS
+// 🔹 5. Refined CORS Policy
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAngularClient",
-        policy => policy.AllowAnyOrigin()
-                        .AllowAnyHeader()
-                        .AllowAnyMethod());
+        policy => policy
+            .WithOrigins(
+                "http://localhost:4200",                    // Local Angular
+                "https://your-app-name.netlify.app"         // 👈 CHANGE THIS TO YOUR ACTUAL NETLIFY URL
+            )
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials(); // Useful if you eventually use Cookies/SignalR
 });
 
-// 🔹 Add Swagger with JWT Auth
+// 🔹 6. Swagger Generation
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "HospitalManagementAPI", Version = "v1" });
-
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = "Enter 'Bearer' followed by your token",
@@ -65,17 +67,12 @@ builder.Services.AddSwaggerGen(c =>
         Type = SecuritySchemeType.ApiKey,
         Scheme = "Bearer"
     });
-
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
             new OpenApiSecurityScheme
             {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
             },
             Array.Empty<string>()
         }
@@ -84,24 +81,29 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
+// 🔹 7. Database Migration on Startup
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
     db.Database.Migrate();
 }
-// 🔹 Always enable Swagger UI
+
+// 🔹 8. Middleware Pipeline (ORDER MATTERS!)
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "HospitalManagementAPI v1");
-    c.RoutePrefix = string.Empty; // loads Swagger at root
+    c.RoutePrefix = string.Empty;
 });
 
-// 🔹 Middleware pipeline
-app.UseCors("AllowAngularClient");
 app.UseRouting();
+
+// CORS must be AFTER UseRouting but BEFORE UseAuthentication
+app.UseCors("AllowAngularClient");
+
 app.UseAuthentication();
 app.UseAuthorization();
+
 app.MapControllers();
 
 app.Run();
