@@ -67,6 +67,9 @@ namespace HospitalManagementAPI.Controllers
     {
         var image = await _context.NurseProfileImages
             .Where(i => i.NurseId == nurseId && i.IsPrimary)
+            .FirstOrDefaultAsync()
+            ?? await _context.NurseProfileImages
+            .Where(i => i.NurseId == nurseId)
             .FirstOrDefaultAsync();
 
         if (image == null || image.ImageData.Length == 0)
@@ -95,7 +98,7 @@ namespace HospitalManagementAPI.Controllers
             existing.ImageData = imageData;
             existing.ContentType = file.ContentType;
             existing.FileName = file.FileName;
-            existing.UploadedAt = DateTime.Now;
+            existing.UploadedAt = DateTime.UtcNow;
         }
         else
         {
@@ -106,7 +109,7 @@ namespace HospitalManagementAPI.Controllers
                 ContentType = file.ContentType,
                 ImageData = imageData,
                 IsPrimary = true,
-                UploadedAt = DateTime.Now
+                UploadedAt = DateTime.UtcNow
             };
             _context.NurseProfileImages.Add(newImage);
         }
