@@ -49,8 +49,7 @@ builder.Services.AddCors(options =>
                 "http://localhost:4200",                    
                 "https://mini-hospital-management.netlify.app" )
             .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials()); 
+            .AllowAnyMethod());
 });
 
 // 🔹 6. Swagger Generation
