@@ -114,11 +114,9 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 // 🔹 9. Health check endpoint for UptimeRobot (keeps the service awake)
-app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))
+app.Map("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))
    .AllowAnonymous();
 
 app.MapControllers();
 
 app.Run();
-
-
