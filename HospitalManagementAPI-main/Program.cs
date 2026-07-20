@@ -1,0 +1,124 @@
+using HospitalManagementAPI.Data;
+using HospitalManagementAPI.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using System.Text;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// 🔹 1. Controllers & JSON Options
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+        options.JsonSerializerOptions.WriteIndented = true;
+    });
+
+// 🔹 2. Database Connection (PostgreSQL)
+builder.Services.AddDbContext<HospitalDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// 🔹 3. Dependency Injection
+builder.Services.AddScoped<IJwtService, JwtService>();
+
+// 🔹 4. Authentication (JWT)
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
+                builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not configured")))
+        };
+    });
+
+// 🔹 5. Refined CORS Policy
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAngularClient",
+        policy => policy
+            .WithOrigins(
+                "http://localhost:4200",                    
+                "https://mini-hospital-management.netlify.app" )
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials()); 
+});
+
+// 🔹 6. Swagger Generation
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "HospitalManagementAPI", Version = "v1" });
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "Enter 'Bearer' followed by your token",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
+
+var app = builder.Build();
+
+// 🔹 7. Database Migration on Startup (non-fatal — app starts even if migration fails)
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<HospitalDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    try
+    {
+        logger.LogInformation("Attempting database migration...");
+        db.Database.Migrate();
+        logger.LogInformation("Database migration completed successfully.");
+    }
+    catch (Exception ex)
+    {
+        logger.LogWarning(ex, "Database migration failed. The app will continue starting up. Tables may already exist.");
+    }
+}
+
+// 🔹 8. Middleware Pipeline (ORDER MATTERS!)
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "HospitalManagementAPI v1");
+    c.RoutePrefix = string.Empty;
+});
+
+app.UseRouting();
+
+// CORS must be AFTER UseRouting but BEFORE UseAuthgitentication
+app.UseCors("AllowAngularClient");
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+// 🔹 9. Health check endpoint for UptimeRobot (keeps the service awake)
+app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))
+   .AllowAnonymous();
+
+app.MapControllers();
+
+app.Run();
+
+
