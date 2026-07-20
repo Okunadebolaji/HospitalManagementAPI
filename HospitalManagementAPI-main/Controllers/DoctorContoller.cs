@@ -311,6 +311,9 @@ public async Task<IActionResult> GetAppointmentsByDoctorAndStatus(int doctorId, 
 
             var image = await _context.DoctorProfileImages
                 .Where(i => i.DoctorId == doctorId && i.IsPrimary == true)
+                .FirstOrDefaultAsync()
+                ?? await _context.DoctorProfileImages
+                .Where(i => i.DoctorId == doctorId)
                 .FirstOrDefaultAsync();
 
             if (image == null)
@@ -425,4 +428,3 @@ private string HashPassword(string password)
 
 
 }
-
